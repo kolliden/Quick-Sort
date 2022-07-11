@@ -13,13 +13,13 @@ ctx.fillStyle = '#C0C0C0';
 let condition = true;
 let allInOrder = true;
 
-let AM_width = 20;
+let AM_width = 1;
 let arr = []
 
 let ticks = 0;
-const speed = 15;
+let speed = 15;
 
-const arrSize = 50;
+const arrSize = 900;
 const ACTIONS = { /* An object that contains the actions that the algorithm does. */
   SORT: "SORT",
   COMPARE: "COMPARE",
@@ -95,6 +95,7 @@ function initCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
   clear();
+  drawAll(arr);
 }
 
 /**
@@ -171,11 +172,15 @@ const actionsMap = {
     let tmp = members[i].getValue();
     members[i].setValue(members[j].getValue(), "red");
     members[j].setValue(tmp, "yellow");
+    playSound('sine', members[i].getValue());
+    playSound('sine', members[j].getValue());
   },
   [ACTIONS.COMPARE]: (action, members) => {
     const [i, j] = action.data;
     members[i].setColor("blue");
-    members[j].setColor("blue");
+    if(j){
+      members[j].setColor("blue");
+    }
     playSound('sine', members[i].getValue());
   },
   [ACTIONS.CONTINUE]: (action, members) => {
@@ -194,9 +199,9 @@ const actionsMap = {
   },
 };
 
-const drawAll = () => arrayMembers.forEach((m) => m.draw());
+const drawAll = () => {if(arrayMembers){arrayMembers.forEach((m) => m.draw());}}
 
-const onAction = (action) => {
+const onAction = async (action) => {
   ticks++;
   setTimeout(() => {
     actionsMap[action.type](action, arrayMembers);
@@ -206,7 +211,7 @@ const onAction = (action) => {
   }, ticks * speed);
 }
 
-const check = (array, onAction) => {
+const check = async (array) => {
   for (let i = 0; i < array.length; i++) {
     if(array[i] < array[i+1]){
       onAction({ type: ACTIONS.SORT, data: i });
@@ -218,65 +223,73 @@ const check = (array, onAction) => {
   return true;
 }
 
-async function swap(i, j){
-  let tmp = arr[i];
-  arr[i] = arr[j];
-  arr[j] = tmp;
+async function swap(arr, leftIndex, rightIndex){
+    var temp = arr[leftIndex];
+    arr[leftIndex] = arr[rightIndex];
+    arr[rightIndex] = temp;
 }
 
-async function partition(items, left, right) {
-  var pivot   = items[Math.floor((right + left) / 2)], //middle element
-      i       = left, //left pointer
-      j       = right; //right pointer
-  while (i <= j) {
-      while (items[i] < pivot) {
-          i++;
-      }
-      while (items[j] > pivot) {
-          j--;
-      }
-      if (i <= j) {
-          await swap(items, i, j); //swap two elements
-          i++;
-          j--;
-      }
-  }
-  return i;
+async function partition(arr, left, right) {
+    var pivot   = arr[Math.floor((right + left) / 2)], //middle element
+        i       = left, //left pointer
+        j       = right; //right pointer
+    while (i <= j) {
+        while (arr[i] < pivot) {
+            i++;
+        }
+        while (arr[j] > pivot) {
+            j--;
+        }
+        if (i <= j) {
+          Promise.all([
+            await swap(arr, i, j), //sawpping two elements
+            await onAction({type: ACTIONS.SWAP, data: [i, j]}),
+            await onAction({type: ACTIONS.COMPARE, data: [pivot, false]}),
+          ]);
+            i++;
+            j--;
+        }
+    }
+    return i;
 }
-function quickSort(items, left, right) {
-  var index;
-  if (items.length > 1) {
-      index = partition(items, left, right); //index returned from partition
-      if (left < index - 1) { //more elements on the left side of the pivot
-          quickSort(items, left, index - 1);
-      }
-      if (index < right) { //more elements on the right side of the pivot
-          quickSort(items, index, right);
-      }
-  }
-  return items;
+
+async function quickSort(arr, left, right) {
+    var index;
+    if (arr.length > 1) {
+        index = await partition(arr, left, right); //index returned from partition
+
+        let recursiveActions = [];
+        if (left < index - 1) { //more elements on the left side of the pivot
+          recursiveActions.push(quickSort(arr, left, index - 1));
+        }
+        if (index < right) { //more elements on the right side of the pivot
+          recursiveActions.push(quickSort(arr, index, right));
+        }
+        Promise.all(recursiveActions);
+    }
+    return arr;
 }
 
 const start = () => {
   initCanvas();
   startButton.remove();
 
-  randomArr = initRandomArr(arr);
-  arr = randomArr;
-  arrayMembers = randomArr.map((v, i) => {
-    return new ArrayMember((AM_width * i + i)+(canvas.width/4), canvas.height/2+arrSize*5, AM_width, v * canvas.height/100 * -1);
+  arr = initRandomArr(arr);
+  arrayMembers = arr.map((v, i) => {
+    return new ArrayMember((AM_width * i + i), canvas.height, AM_width, v * -1 * canvas.height/arrSize);
   });
 
   drawAll();
 
   var startTime = performance.now()
 
-  console.log(arr);
-  /* Calling the bubbleSort function, and passing in the randomArr array and a callback function. */
-  // first call to quick sort
-  var result = quickSort(arr, 0, arr.length - 1);
+ // first call to quick sort
+  var sortedArray = quickSort(arr, 0, arr.length - 1);
 
-  console.log(result);
+  speed = 5;
+  check(sortedArray);
+  console.log(sortedArray); //prints [2,3,5,6,7,9]
+
   var endTime = performance.now()
 
   console.log(`Took ${endTime - startTime} milliseconds`)
