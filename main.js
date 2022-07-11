@@ -3,6 +3,7 @@
 let canvas = document.getElementById('cv');
 let ctx = canvas.getContext('2d');
 let startButton = document.getElementById('bsstart');
+let iframe = document.getElementById("iframe");
 
 canvas.width = 0;
 canvas.height = 0;
@@ -273,6 +274,7 @@ async function quickSort(arr, left, right) {
 const start = () => {
   initCanvas();
   startButton.remove();
+  iframe.remove();
 
   arr = initRandomArr(arr);
   arrayMembers = arr.map((v, i) => {
