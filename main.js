@@ -196,6 +196,16 @@ const actionsMap = {
 
 const drawAll = () => arrayMembers.forEach((m) => m.draw());
 
+const onAction = (action) => {
+  ticks++;
+  setTimeout(() => {
+    actionsMap[action.type](action, arrayMembers);
+    clear();
+    drawAll(arrayMembers);
+    arrayMembers.forEach((m) => m.resetColor());
+  }, ticks * speed);
+}
+
 const check = (array, onAction) => {
   for (let i = 0; i < array.length; i++) {
     if(array[i] < array[i+1]){
@@ -208,24 +218,43 @@ const check = (array, onAction) => {
   return true;
 }
 
-/**
- * "While the array is not sorted, compare each element to the next element, and if the first element
- * is greater than the second element, swap them, and if not, continue to the next element."
- * 
- * The function takes two parameters: an array and a function. The array is the array to be sorted, and
- * the function is a callback function that is called every time the algorithm does something. The
- * callback function takes an object as a parameter, and the object has two properties: type and data.
- * The type property is a string that tells the callback function what the algorithm did, and the data
- * property is an array that contains the data that the callback function needs to do its job.
- * 
- * The callback function is called every time the algorithm does something. The algorithm does three
- * things: it compares two elements, it swaps two elements, and it continues to the next element. The
- * callback function is called with an object that has a type property of
- * @param array - The array to be sorted
- * @param onAction - a function that takes an object with two properties: type and data.
- */
-function bubbleSort(array, onAction) {
-  //Sorting things go here
+async function swap(i, j){
+  let tmp = arr[i];
+  arr[i] = arr[j];
+  arr[j] = tmp;
+}
+
+async function partition(items, left, right) {
+  var pivot   = items[Math.floor((right + left) / 2)], //middle element
+      i       = left, //left pointer
+      j       = right; //right pointer
+  while (i <= j) {
+      while (items[i] < pivot) {
+          i++;
+      }
+      while (items[j] > pivot) {
+          j--;
+      }
+      if (i <= j) {
+          await swap(items, i, j); //swap two elements
+          i++;
+          j--;
+      }
+  }
+  return i;
+}
+function quickSort(items, left, right) {
+  var index;
+  if (items.length > 1) {
+      index = partition(items, left, right); //index returned from partition
+      if (left < index - 1) { //more elements on the left side of the pivot
+          quickSort(items, left, index - 1);
+      }
+      if (index < right) { //more elements on the right side of the pivot
+          quickSort(items, index, right);
+      }
+  }
+  return items;
 }
 
 const start = () => {
@@ -233,6 +262,7 @@ const start = () => {
   startButton.remove();
 
   randomArr = initRandomArr(arr);
+  arr = randomArr;
   arrayMembers = randomArr.map((v, i) => {
     return new ArrayMember((AM_width * i + i)+(canvas.width/4), canvas.height/2+arrSize*5, AM_width, v * canvas.height/100 * -1);
   });
@@ -241,17 +271,13 @@ const start = () => {
 
   var startTime = performance.now()
 
+  console.log(arr);
   /* Calling the bubbleSort function, and passing in the randomArr array and a callback function. */
-  bubbleSort(randomArr ,(action) => {
-    ticks++;
-    setTimeout(() => {
-      actionsMap[action.type](action, arrayMembers);
-      clear();
-      drawAll(arrayMembers);
-      arrayMembers.forEach((m) => m.resetColor());
-    }, ticks * speed);
-  });
+  // first call to quick sort
+  var result = quickSort(arr, 0, arr.length - 1);
+
+  console.log(result);
   var endTime = performance.now()
 
-  console.log(`Call to doSomething took ${endTime - startTime} milliseconds`)
+  console.log(`Took ${endTime - startTime} milliseconds`)
 }
